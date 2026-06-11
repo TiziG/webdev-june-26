@@ -367,6 +367,10 @@ h1 {
   background: var(--accent-dim);
   border-color: var(--accent);
   box-shadow: 0 0 12px rgba(255, 107, 53, 0.45);
+  letter-spacing: -30px;
+  white-space: nowrap;
+  overflow: hidden;
+  justify-content: flex-start;
 }
 
 /* Figure standing on a just-revealed lava tile (lava move-result). */
