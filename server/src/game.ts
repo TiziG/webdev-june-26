@@ -17,7 +17,7 @@ import { MAPS, tileKey, type GameMap } from './maps.js';
 const RESULT_VALID_MS = 5_000;
 const RESULT_INVALID_MS = 10_000;
 const MIN_TURN_SECONDS = 3;
-const MAX_TURN_SECONDS = 120;
+const MAX_TURN_SECONDS = 1200;
 const MAX_NAME_LENGTH = 16;
 
 const DELTAS: Record<Direction, Tile> = {

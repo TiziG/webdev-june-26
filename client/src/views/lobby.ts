@@ -56,7 +56,7 @@ export function renderLobby(app: HTMLElement, ctx: AppCtx): void {
     class: 'input',
     type: 'number',
     min: '3',
-    max: '120',
+    max: '1200',
     inputmode: 'numeric',
     value: String(cfg.turnSeconds),
   }) as HTMLInputElement;
