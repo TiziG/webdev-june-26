@@ -4,8 +4,8 @@
   --border: #34302b;
   --text: #f2ede4;
   --muted: #9b948a;
-  --accent: #ff6b35;
-  --accent-dim: rgba(255, 107, 53, 0.16);
+  --accent: #35e7ff;
+  --accent-dim: rgb(53 255 248 / 0.16);
   --good: #4ade80;
   --bad: #f87171;
   --gold: #eab308;
