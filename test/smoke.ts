@@ -32,7 +32,14 @@ function connect(): Sock {
   s.on('state', (st) => {
     latest.set(s, st);
     if (st.game && st.game.lavaTiles !== null && st.phase !== 'won') {
-      lavaLeak = `lava leaked to clients in phase ${st.phase}`;
+      // The only legitimate pre-win reveal: the single just-stepped-on lava
+      // tile during a lava move-result in easy/no-history mode.
+      const legit =
+        st.phase === 'move-result' &&
+        st.game.lastMove?.outcome === 'lava' &&
+        (st.game.difficulty === 'easy' || st.game.difficulty === 'no-history') &&
+        st.game.lavaTiles.length === 1;
+      if (!legit) lavaLeak = `lava leaked to clients in phase ${st.phase} (${st.game.lavaTiles.length} tiles)`;
     }
     for (const w of [...waiters]) w();
   });
@@ -64,7 +71,7 @@ function waitFor(s: Sock, pred: (st: ClientState) => boolean, what: string, time
 
 const ok = (msg: string) => console.log(`  ✓ ${msg}`);
 
-async function playMove(admin: Sock, dir: Direction, expected: MoveOutcome): Promise<void> {
+async function playMove(admin: Sock, dir: Direction, expected: MoveOutcome): Promise<string> {
   const st = await waitFor(admin, (s) => s.phase === 'thinking', 'thinking phase');
   const current = st.game!.currentPlayerName!;
   const sock = socksByName.get(current.toLowerCase());
@@ -75,6 +82,7 @@ async function playMove(admin: Sock, dir: Direction, expected: MoveOutcome): Pro
   assert(lm.outcome === expected, `move ${dir}: expected ${expected}, got ${lm.outcome}`);
   assert(lm.direction === dir, `lastMove.direction is ${dir}`);
   ok(`${current} moved ${dir} → ${expected}`);
+  return current;
 }
 
 async function main(): Promise<void> {
@@ -124,15 +132,31 @@ async function main(): Promise<void> {
   assert(st.game!.attempt === 1, 'attempt 1');
   ok('game started, figure at start');
 
-  await playMove(admin, 'left', 'off-board'); // walks off the board
+  // Expected avoidable mistakes per player (off-board + repeated lava only).
+  const expectedMistakes = new Map<string, number>([
+    ['Alice', 0],
+    ['Bob', 0],
+  ]);
+  const bump = (name: string) => expectedMistakes.set(name, expectedMistakes.get(name)! + 1);
+
+  bump(await playMove(admin, 'left', 'off-board')); // off the board: always avoidable
   st = await waitFor(admin, (s) => s.phase === 'thinking' && s.game!.attempt === 2, 'attempt 2 after off-board');
   assert(st.game!.figure!.x === 0 && st.game!.figure!.y === 0, 'figure reset to start');
   ok('failed attempt resets the figure (10s)');
 
   await playMove(admin, 'right', 'valid');
-  await playMove(admin, 'right', 'lava'); // (2,0) is lava
+  await playMove(admin, 'right', 'lava'); // (2,0): first lava contact, NOT avoidable
+  st = latest.get(admin)!;
+  assert(st.game!.lavaTiles?.length === 1 && st.game!.lavaTiles[0].x === 2 && st.game!.lavaTiles[0].y === 0, 'stepped-on lava tile revealed during result');
+  assert(st.game!.figure?.x === 2 && st.game!.figure?.y === 0, 'figure shown on the lava tile during result');
   st = await waitFor(admin, (s) => s.phase === 'thinking' && s.game!.attempt === 3, 'attempt 3 after lava');
-  ok('lava detected, attempt 3 started');
+  assert(st.game!.lavaTiles === null, 'lava hidden again when next attempt starts');
+  ok('lava step revealed during result, hidden afterwards');
+
+  await playMove(admin, 'right', 'valid');
+  bump(await playMove(admin, 'right', 'lava')); // same lava tile again: avoidable
+  st = await waitFor(admin, (s) => s.phase === 'thinking' && s.game!.attempt === 4, 'attempt 4');
+  ok('repeated lava counted as avoidable mistake');
 
   // Winning path: R U U R U
   await playMove(admin, 'right', 'valid');
@@ -142,7 +166,13 @@ async function main(): Promise<void> {
   await playMove(admin, 'up', 'won');
   st = await waitFor(admin, (s) => s.phase === 'won', 'won phase');
   assert(st.game!.lavaTiles !== null && st.game!.lavaTiles.length === 3, 'lava revealed on win (3 tiles)');
-  ok('game won, lava revealed');
+  const ranking = st.game!.ranking;
+  assert(ranking && ranking.length === 2, 'ranking has both players');
+  for (const r of ranking!) {
+    assert(r.mistakes === expectedMistakes.get(r.name), `${r.name} has ${expectedMistakes.get(r.name)} mistakes (got ${r.mistakes})`);
+  }
+  assert(ranking![0].mistakes <= ranking![1].mistakes, 'ranking sorted by fewest mistakes');
+  ok(`game won, lava revealed, ranking correct (${ranking!.map((r) => `${r.name}:${r.mistakes}`).join(', ')})`);
 
   admin.emit('admin:end');
   await waitFor(admin, (s) => s.phase === 'lobby', 'back to lobby');

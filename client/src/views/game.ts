@@ -1,4 +1,4 @@
-import type { Direction, GameView, LastMove } from '../../../shared/types';
+import type { Direction, GameView, LastMove, RankingEntry } from '../../../shared/types';
 import { DIFFICULTIES } from '../../../shared/types';
 import type { AppCtx } from '../main';
 import { card, h, playerList } from './components';
@@ -30,7 +30,7 @@ export function renderGame(app: HTMLElement, ctx: AppCtx): void {
       'header',
       { class: 'top' },
       h('span', { class: 'logo-sm' }, '🌋'),
-      h('h1', {}, 'Lava Maze'),
+      h('h1', {}, 'Death Hike'),
       h('span', { class: 'phase-tag' }, `Attempt ${g.attempt}`),
       h('span', { class: 'phase-tag dim' }, diffLabel),
     ),
@@ -54,7 +54,7 @@ export function renderGame(app: HTMLElement, ctx: AppCtx): void {
   } else if (phase === 'move-result') {
     app.append(resultPanel(g.lastMove!));
   } else {
-    app.append(wonPanel(g.lastMove!));
+    app.append(wonPanel(g));
   }
 
   // --- admin extras ----------------------------------------------------------
@@ -112,7 +112,7 @@ function buildGrid(g: GameView): HTMLElement {
       ]
         .filter(Boolean)
         .join(' ');
-      const glyph = isFigure ? (isGoal ? '🏆' : '🧍') : lava.has(key) ? '🌋' : isGoal ? '⭐' : isStart ? '🏁' : '';
+      const glyph = isFigure ? (isGoal ? '🏆' : '👥') : lava.has(key) ? '🌋' : isGoal ? '🏔️' : isStart ? '🏠' : '';
       grid.append(h('div', { class: cls }, glyph));
     }
   }
@@ -171,15 +171,42 @@ function resultPanel(lm: LastMove): HTMLElement {
   );
 }
 
-function wonPanel(lm: LastMove): HTMLElement {
-  return card(
+function wonPanel(g: GameView): HTMLElement {
+  const lm = g.lastMove!;
+  const panel = card(
     h('p', { class: 'result win' }, '🏆 You made it!'),
     lm.direction !== null
       ? h('p', { class: 'center' }, `${lm.playerName} moved ${DIR_LABEL[lm.direction]} — straight onto the goal.`)
       : '',
     h('p', { class: 'muted center' }, 'The lava field is revealed above.'),
-    h('p', { class: 'muted center pulse' }, 'Waiting for the admin to end the game…'),
   );
+  if (g.ranking && g.ranking.length > 0) panel.append(rankingSection(g.ranking));
+  panel.append(h('p', { class: 'muted center pulse' }, 'Waiting for the admin to end the game…'));
+  return panel;
+}
+
+function rankingSection(ranking: RankingEntry[]): HTMLElement {
+  const wrap = h('div', { class: 'ranking' }, h('p', { class: 'muted' }, 'Fewest avoidable mistakes'));
+  // Players with the same mistake count share one rank row.
+  const groups = new Map<number, string[]>();
+  for (const r of ranking) {
+    if (!groups.has(r.mistakes)) groups.set(r.mistakes, []);
+    groups.get(r.mistakes)!.push(r.name);
+  }
+  let rank = 0;
+  for (const [mistakes, names] of groups) {
+    rank++;
+    wrap.append(
+      h(
+        'div',
+        { class: 'rank-row' },
+        h('span', { class: 'rank-pos' }, rank === 1 ? '🥇' : `#${rank}`),
+        h('span', { class: 'rank-names' }, names.join(', ')),
+        h('span', { class: 'rank-mistakes' }, `${mistakes} ${mistakes === 1 ? 'mistake' : 'mistakes'}`),
+      ),
+    );
+  }
+  return wrap;
 }
 
 function countdown(withNumber = true): HTMLElement {

@@ -19,7 +19,7 @@ export function renderLobby(app: HTMLElement, ctx: AppCtx): void {
       'header',
       { class: 'top' },
       h('span', { class: 'logo-sm' }, '🌋'),
-      h('h1', {}, 'Lava Maze'),
+      h('h1', {}, 'Death Hike'),
       h('span', { class: 'phase-tag' }, 'Lobby'),
     ),
     card(

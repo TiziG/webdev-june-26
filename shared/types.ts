@@ -49,6 +49,12 @@ export interface LastMove {
   outcome: MoveOutcome;
 }
 
+export interface RankingEntry {
+  name: string;
+  /** Avoidable mistakes: off-board moves and re-stepping into already-discovered lava. */
+  mistakes: number;
+}
+
 /** The game as a specific client is allowed to see it (difficulty-filtered). */
 export interface GameView {
   width: number;
@@ -63,8 +69,13 @@ export interface GameView {
   /** Epoch ms when the current phase auto-advances (turn deadline / result countdown). */
   phaseEndsAt: number | null;
   phaseDurationMs: number | null;
-  /** Only revealed once the game is won. */
+  /**
+   * Full reveal once the game is won; in easy/no-history mode also the single
+   * lava tile that was just stepped on during a lava move-result.
+   */
   lavaTiles: Tile[] | null;
+  /** Players sorted by fewest avoidable mistakes; only set once the game is won. */
+  ranking: RankingEntry[] | null;
 }
 
 export interface ClientState {

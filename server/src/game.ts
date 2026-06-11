@@ -8,6 +8,7 @@ import type {
   LastMove,
   LoginResult,
   MoveOutcome,
+  RankingEntry,
   Tile,
 } from '../../shared/types.js';
 import { DIFFICULTIES, DIRECTIONS } from '../../shared/types.js';
@@ -43,6 +44,10 @@ interface ActiveGame {
   attempt: number;
   currentPlayer: string | null; // player key
   lastMove: LastMove | null;
+  /** Lava tiles hit in any attempt of this game — stepping into these again is avoidable. */
+  discoveredLava: Set<string>;
+  /** Avoidable mistakes per player key. */
+  mistakes: Map<string, number>;
   phaseEndsAt: number | null;
   phaseDurationMs: number | null;
   timer: NodeJS.Timeout | null;
@@ -131,6 +136,8 @@ export class GameRoom {
       attempt: 1,
       currentPlayer: null,
       lastMove: null,
+      discoveredLava: new Set(),
+      mistakes: new Map(),
       phaseEndsAt: null,
       phaseDurationMs: null,
       timer: null,
@@ -191,25 +198,51 @@ export class GameRoom {
     const showFigure = revealed || d === 'easy' || d === 'no-history' || (d === 'no-state' && !movedThisAttempt);
     const showStepped = revealed || d === 'easy';
 
+    let figure = showFigure ? { ...g.figure } : null;
+    let lavaTiles: Tile[] | null = null;
+    if (revealed) {
+      lavaTiles = [...g.map.lava].map((k) => {
+        const [x, y] = k.split(',').map(Number);
+        return { x, y };
+      });
+    } else if (
+      g.phase === 'move-result' &&
+      g.lastMove?.outcome === 'lava' &&
+      g.lastMove.direction !== null &&
+      (d === 'easy' || d === 'no-history')
+    ) {
+      // Show the lava tile that was just stepped on, with the figure on it,
+      // for the duration of the move-result phase only. g.figure is still the
+      // pre-move position, so the stepped-on tile is one move in lastMove's
+      // direction.
+      const delta = DELTAS[g.lastMove.direction];
+      const hit = { x: g.figure.x + delta.x, y: g.figure.y + delta.y };
+      lavaTiles = [hit];
+      figure = hit;
+    }
+
     return {
       width: g.map.width,
       height: g.map.height,
       difficulty: d,
       turnSeconds: g.config.turnSeconds,
       attempt: g.attempt,
-      figure: showFigure ? { ...g.figure } : null,
+      figure,
       steppedTiles: showStepped ? g.stepped.map((t) => ({ ...t })) : [],
       currentPlayerName: g.currentPlayer ? (this.players.get(g.currentPlayer)?.displayName ?? null) : null,
       lastMove: g.lastMove,
       phaseEndsAt: g.phaseEndsAt,
       phaseDurationMs: g.phaseDurationMs,
-      lavaTiles: revealed
-        ? [...g.map.lava].map((k) => {
-            const [x, y] = k.split(',').map(Number);
-            return { x, y };
-          })
-        : null,
+      lavaTiles,
+      ranking: revealed ? this.buildRanking() : null,
     };
+  }
+
+  private buildRanking(): RankingEntry[] {
+    const g = this.game!;
+    return this.candidates()
+      .map((p) => ({ name: p.displayName, mistakes: g.mistakes.get(p.key) ?? 0 }))
+      .sort((a, b) => a.mistakes - b.mistakes || a.name.localeCompare(b.name));
   }
 
   private candidates(): Player[] {
@@ -244,7 +277,11 @@ export class GameRoom {
     if (!g || g.phase !== 'thinking') return;
     this.clearTimer();
 
-    const moverName = (g.currentPlayer && this.players.get(g.currentPlayer)?.displayName) || 'Someone';
+    const moverKey = g.currentPlayer;
+    const moverName = (moverKey && this.players.get(moverKey)?.displayName) || 'Someone';
+    const addMistake = () => {
+      if (moverKey) g.mistakes.set(moverKey, (g.mistakes.get(moverKey) ?? 0) + 1);
+    };
     let outcome: MoveOutcome;
     if (direction === null) {
       outcome = 'timeout';
@@ -252,8 +289,13 @@ export class GameRoom {
       const target = { x: g.figure.x + DELTAS[direction].x, y: g.figure.y + DELTAS[direction].y };
       if (target.x < 0 || target.y < 0 || target.x >= g.map.width || target.y >= g.map.height) {
         outcome = 'off-board';
+        addMistake(); // leaving the board is always avoidable
       } else if (g.map.lava.has(tileKey(target))) {
         outcome = 'lava';
+        // Only lava the group already discovered in an earlier attempt counts
+        // as avoidable; first contact is legitimate exploration.
+        if (g.discoveredLava.has(tileKey(target))) addMistake();
+        else g.discoveredLava.add(tileKey(target));
       } else {
         g.figure = target;
         g.stepped.push(target);

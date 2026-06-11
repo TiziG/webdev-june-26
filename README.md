@@ -1,9 +1,11 @@
-# Lava Maze
+# Death Hike
 
 A one-shot multiplayer browser game for meetings/conferences. Everyone joins one
 lobby on their phone; each turn a random player must move the shared figure
 up/down/left/right across a grid with hidden lava tiles. Reach the top-right
-tile together to win.
+tile together to win. The win screen shows a ranking by fewest avoidable
+mistakes (moving off the board, or stepping into lava the group had already
+discovered in an earlier attempt).
 
 ## Roles
 
@@ -22,8 +24,10 @@ tile together to win.
 | no-state | grid; figure only until the first move of each attempt |
 | no-context | only the grid dimensions as text |
 
-Lava is never visible (also not on the admin's screen — it is meant to be
-shared). It is only revealed once the game is won. Maps are hardcoded presets
+Lava is never visible upfront (also not on the admin's screen — it is meant to
+be shared). In easy/no-history mode the single lava tile that was just stepped
+on is shown during the move-result phase; the full field is only revealed once
+the game is won. Maps are hardcoded presets
 in [server/src/maps.ts](server/src/maps.ts); each is validated at startup
 (BFS) to guarantee a safe path exists.
 
