@@ -37,7 +37,7 @@ export function renderLogin(
 
   app.append(
     h('div', { class: 'login-hero' }, h('div', { class: 'logo' }, '🌋'), h('h1', {}, 'Death Hike')),
-    h('p', { class: 'muted center' }, 'Guide the figure across the hidden lava field — together.'),
+    h('p', { class: 'muted center' }, 'WebDevs favorite activity! Help the team on their hike up the volcano and dont let them taste the lava!'),
     form,
   );
   input.focus();
