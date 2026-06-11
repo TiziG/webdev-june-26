@@ -158,15 +158,15 @@ function resultPanel(lm: LastMove): HTMLElement {
 
   const reason =
     lm.outcome === 'lava'
-      ? 'The figure stepped into lava. 🔥'
+      ? 'WebDev stepped into lava. 🔥'
       : lm.outcome === 'off-board'
-        ? 'The figure fell off the board. 🕳️'
+        ? 'WebDev fell off the board. 🕳️'
         : 'Time ran out. ⏰';
   return card(
     moveLine,
     h('p', { class: 'result fail' }, '💀 Attempt failed'),
     h('p', { class: 'muted center' }, reason),
-    h('p', { class: 'muted center' }, 'The figure returns to start. New attempt in ', h('span', { 'data-count': '' }), 's'),
+    h('p', { class: 'muted center' }, 'WebDev returns to start. New attempt in ', h('span', { 'data-count': '' }), 's'),
     countdown(false),
   );
 }
