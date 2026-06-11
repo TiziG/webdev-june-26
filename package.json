@@ -1,14 +1,27 @@
 {
-  "name": "web-dev-june-26",
+  "name": "lava-maze",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "concurrently -k -n server,client -c yellow,cyan \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch server/src/index.ts",
+    "dev:client": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
+    "start": "node dist/server/src/index.js",
+    "smoke": "tsx test/smoke.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.1.2",
+    "socket.io-client": "^4.8.1",
+    "tsx": "^4.19.4",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
   }
