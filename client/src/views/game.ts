@@ -112,7 +112,7 @@ function buildGrid(g: GameView): HTMLElement {
       ]
         .filter(Boolean)
         .join(' ');
-      const glyph = isFigure ? (isGoal ? '🏆' : '🚶‍♂️‍➡️🚶‍♀️‍➡️🚶‍♂️‍➡️') : lava.has(key) ? '🌋' : isGoal ? '🌄' : isStart ? '🏠' : '';
+      const glyph = isFigure ? (isGoal ? '🏆' : '👨‍👨‍👦‍👦') : lava.has(key) ? '🌋' : isGoal ? '🌄' : isStart ? '🏠' : '';
       grid.append(h('div', { class: cls }, glyph));
     }
   }
